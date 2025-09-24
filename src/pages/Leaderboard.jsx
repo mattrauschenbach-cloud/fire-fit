@@ -20,8 +20,7 @@ export default function Leaderboard() {
         totals[shift] = (totals[shift] || 0) + total
         arr.push({ uid, name, meters: total, shift })
       }
-      setRows(arr)
-      setShiftTotals(totals)
+      setRows(arr); setShiftTotals(totals)
     })
     return () => unsub()
   }, [])
@@ -39,24 +38,8 @@ export default function Leaderboard() {
       </div>
       <div className="bg-white border rounded-xl">
         <table className="w-full text-left">
-          <thead>
-            <tr className="border-b bg-slate-100">
-              <th className="p-3">#</th>
-              <th className="p-3">Member</th>
-              <th className="p-3">Shift</th>
-              <th className="p-3">Meters</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <tr key={r.uid} className="border-b last:border-0">
-                <td className="p-3">{i+1}</td>
-                <td className="p-3">{r.name}</td>
-                <td className="p-3">{r.shift}</td>
-                <td className="p-3 font-medium">{r.meters.toLocaleString()}</td>
-              </tr>
-            ))}
-          </tbody>
+          <thead><tr className="border-b bg-slate-100"><th className="p-3">#</th><th className="p-3">Member</th><th className="p-3">Shift</th><th className="p-3">Meters</th></tr></thead>
+          <tbody>{rows.map((r,i)=>(<tr key={r.uid} className="border-b last:border-0"><td className="p-3">{i+1}</td><td className="p-3">{r.name}</td><td className="p-3">{r.shift}</td><td className="p-3 font-medium">{r.meters.toLocaleString()}</td></tr>))}</tbody>
         </table>
       </div>
     </section>

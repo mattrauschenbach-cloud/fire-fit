@@ -4,7 +4,11 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     function isOwner(userId) { return signedIn() && request.auth.uid == userId; }
     function isMentor() { return signedIn() && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'mentor'; }
+
+    // Weekly / Monthly
     match /meta/{docId} { allow read: if true; allow write: if isMentor(); }
+
+    // Profiles
     match /profiles/{userId} {
       allow read: if signedIn();
       allow write: if isMentor() ||
@@ -13,10 +17,18 @@ service cloud.firestore {
          request.resource.data.isCommitted == resource.data.isCommitted &&
          request.resource.data.role == resource.data.role);
     }
+
+    // Totals & logs
     match /totals/{userId} { allow read: if true; allow write: if isOwner(userId); }
     match /logs/{userId}/{doc=**} { allow read, write: if isOwner(userId); }
+
+    // Standards
     match /standards/{userId} { allow read, write: if isOwner(userId) || isMentor(); }
+
+    // Config (tier templates)
     match /config/{docId} { allow read: if true; allow write: if isMentor(); }
+
+    // Team stats
     match /stats/{docId} { allow read: if true; allow write: if signedIn(); }
   }
 }
