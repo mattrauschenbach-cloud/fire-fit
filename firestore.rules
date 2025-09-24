@@ -3,17 +3,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
     function isOwner(userId) { return signedIn() && request.auth.uid == userId; }
-    function isMentor() {
-      return signedIn() && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'mentor';
-    }
-
-    // Weekly & Monthly challenge/workouts live under meta/*
-    match /meta/{docId} {
-      allow read: if true;
-      allow write: if isMentor();
-    }
-
-    // Profiles: mentors can write; owners cannot change role/tier/isCommitted
+    function isMentor() { return signedIn() && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'mentor'; }
+    match /meta/{docId} { allow read: if true; allow write: if isMentor(); }
     match /profiles/{userId} {
       allow read: if signedIn();
       allow write: if isMentor() ||
@@ -22,29 +13,10 @@ service cloud.firestore {
          request.resource.data.isCommitted == resource.data.isCommitted &&
          request.resource.data.role == resource.data.role);
     }
-
-    match /totals/{userId} {
-      allow read: if true;
-      allow write: if isOwner(userId);
-    }
-
-    match /logs/{userId}/{doc=**} {
-      allow read, write: if isOwner(userId);
-    }
-
-    match /standards/{userId} {
-      allow read: if isOwner(userId) || isMentor();
-      allow write: if isOwner(userId) || isMentor();
-    }
-
-    match /config/{docId} {
-      allow read: if true;
-      allow write: if isMentor();
-    }
-
-    match /stats/{docId} {
-      allow read: if true;
-      allow write: if signedIn();
-    }
+    match /totals/{userId} { allow read: if true; allow write: if isOwner(userId); }
+    match /logs/{userId}/{doc=**} { allow read, write: if isOwner(userId); }
+    match /standards/{userId} { allow read, write: if isOwner(userId) || isMentor(); }
+    match /config/{docId} { allow read: if true; allow write: if isMentor(); }
+    match /stats/{docId} { allow read: if true; allow write: if signedIn(); }
   }
 }
