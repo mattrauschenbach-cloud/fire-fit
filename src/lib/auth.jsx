@@ -1,7 +1,8 @@
+
 import { useEffect, useState, useContext, createContext } from 'react'
 import { auth, provider, db } from './firebase'
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth'
-import { doc, setDoc, onSnapshot } from 'firebase/firestore'
+import { doc, setDoc, onSnapshot, getDoc } from 'firebase/firestore'
 
 const AuthCtx = createContext(null)
 
@@ -15,17 +16,20 @@ export function AuthProvider({ children }) {
       setUser(u)
       if (!u) { setProfile(null); setLoading(false); return }
 
-      const ref = doc(db, 'profiles', u.uid)
+      const prefName = u.displayName || (u.email ? u.email.split('@')[0] : 'Firefighter')
+      const profileRef = doc(db, 'profiles', u.uid)
+      await setDoc(profileRef, { displayName: prefName, email: u.email || null, photoURL: u.photoURL || null }, { merge: true })
 
-      // Save real identity so Members shows names
-      const niceName = u.displayName || (u.email ? u.email.split('@')[0] : 'Firefighter')
-      await setDoc(ref, {
-        displayName: niceName,
-        email: u.email || null,
-        photoURL: u.photoURL || null
-      }, { merge: true })
+      // Seed standards from master if blank
+      const myStdRef = doc(db, 'standards', u.uid)
+      const myStdSnap = await getDoc(myStdRef)
+      if (!myStdSnap.exists() || !Array.isArray(myStdSnap.data().items) || myStdSnap.data().items.length === 0) {
+        const masterSnap = await getDoc(doc(db, 'config', 'standards_master'))
+        const masterItems = masterSnap.exists() ? (masterSnap.data().items || []) : []
+        if (masterItems.length) await setDoc(myStdRef, { items: masterItems }, { merge: true })
+      }
 
-      const unsubProf = onSnapshot(ref, (d) => setProfile(d.data()))
+      const unsubProf = onSnapshot(profileRef, (d) => setProfile(d.data()))
       setLoading(false)
       return () => unsubProf && unsubProf()
     })

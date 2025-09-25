@@ -1,7 +1,8 @@
+
 import { useEffect, useMemo, useState } from 'react'
 import { db } from '../lib/firebase'
 import { collection, onSnapshot, doc, getDoc, setDoc } from 'firebase/firestore'
-const TIER_KEYS = ['committed','developed','advanced','elite']
+const TIER_KEYS = ['committed','developmental','advanced','elite']
 const mapTier = (t) => t === 'developmental' ? 'developed' : t
 
 export default function TierCheckoff() {

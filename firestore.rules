@@ -1,12 +1,27 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{userId}/** {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    function signedIn() { return request.auth != null; }
+    function isOwner(userId) { return signedIn() && request.auth.uid == userId; }
+    function isMentor() { return signedIn() && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'mentor'; }
+
+    match /config/{docId} { allow read: if true; allow write: if isMentor(); }
+    match /meta/{docId} { allow read: if true; allow write: if isMentor(); }
+
+    match /profiles/{userId} {
+      allow read: if signedIn();
+      allow write: if isMentor() ||
+        (isOwner(userId) &&
+         request.resource.data.tier == resource.data.tier &&
+         request.resource.data.isCommitted == resource.data.isCommitted &&
+         request.resource.data.role == resource.data.role);
     }
-    match /public/** {
-      allow read: if true;
-      allow write: if false;
-    }
+
+    match /totals/{userId} { allow read: if true; allow write: if isOwner(userId); }
+    match /logs/{userId}/{doc=**} { allow read, write: if isOwner(userId); }
+
+    match /standards/{userId} { allow read, write: if isOwner(userId) || isMentor(); }
+    match /stats/{docId} { allow read: if true; allow write: if signedIn(); }
   }
 }

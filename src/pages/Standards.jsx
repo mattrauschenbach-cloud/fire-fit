@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react'
 import { db } from '../lib/firebase'
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore'
@@ -35,7 +36,7 @@ export default function Standards() {
             <input type="checkbox" checked={!!it.done} onChange={()=>toggle(i)} />
             <span>{it.label}</span>
           </label>
-        )) : <p className="text-sm text-slate-600">No standards yet. A mentor can assign your tier template.</p>}
+        )) : <p className="text-sm text-slate-600">No standards yet. A mentor can assign the master list.</p>}
       </div>
     </section>
   )

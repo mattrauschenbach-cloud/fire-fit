@@ -1,58 +1,53 @@
-import { useEffect, useState } from 'react'
+
+import { useState, useEffect } from 'react'
 import { db } from '../lib/firebase'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
-const TIERS = ['committed','developed','advanced','elite']
-const parseLines = (text) => text.split(/\r?\n/).map(t=>t.trim()).filter(Boolean).map(label => ({ key: label.toLowerCase().replace(/[^a-z0-9]+/g,'_'), label }))
+import { doc, getDoc, setDoc, getDocs, collection } from 'firebase/firestore'
+
+const parseLines = (text) =>
+  text.split(/\r?\n/).map(t => t.trim()).filter(Boolean).map(label => ({
+    key: label.toLowerCase().replace(/[^a-z0-9]+/g,'_'),
+    label,
+    target: ''
+  }))
 
 export default function StandardsImport() {
-  const [tier, setTier] = useState('committed')
   const [raw, setRaw] = useState('')
   const [msg, setMsg] = useState('')
-  useEffect(()=>{ setMsg('') }, [tier, raw])
 
-  const saveTemplate = async (e) => {
+  useEffect(()=>setMsg(''), [raw])
+
+  const saveMaster = async e => {
     e.preventDefault()
     const items = parseLines(raw)
     if (!items.length) { setMsg('Add at least one line.'); return }
-    const ref = doc(db, 'config', 'standards_by_tier')
-    const snap = await getDoc(ref)
-    const existing = snap.exists() ? snap.data() : {}
-    existing[tier] = items
-    await setDoc(ref, existing, { merge: true })
-    setMsg('Saved template ✓')
+    await setDoc(doc(db,'config','standards_master'), { items }, { merge:true })
+    setMsg('Saved master standards ✓')
   }
 
-  const applyToMember = async () => {
-    const uid = prompt('Enter member UID to apply this tier template to:')
-    if (!uid) return
-    const ref = doc(db, 'config', 'standards_by_tier')
-    const snap = await getDoc(ref)
-    const tpl = snap.exists() ? (snap.data()[tier] || []) : []
-    await setDoc(doc(db, 'standards', uid), { items: tpl }, { merge: true })
-    setMsg('Applied to member ✓')
+  const assignToAll = async () => {
+    const masterSnap = await getDoc(doc(db,'config','standards_master'))
+    if (!masterSnap.exists()) { setMsg('Save master first.'); return }
+    const master = masterSnap.data().items || []
+    const people = await getDocs(collection(db,'profiles'))
+    for (const p of people.docs) {
+      await setDoc(doc(db,'standards', p.id), { items: master }, { merge:true })
+    }
+    setMsg('Assigned to all members ✓')
   }
 
   return (
     <section className="space-y-4">
-      <h2 className="text-2xl font-bold">Standards Import (by Tier)</h2>
-      <p className="text-sm text-slate-600">Paste one standard per line. Save per tier (committed, developed, advanced, elite).</p>
-
+      <h2 className="text-2xl font-bold">Master Standards</h2>
+      <p className="text-sm text-slate-600">Paste one standard per line. Click Save master, then Assign to all.</p>
+      <textarea className="w-full border rounded p-3" rows="12"
+        placeholder={"Deadlift — 1.5× BW (min 225×3)\nBench Press — 135×5\n..."}
+        value={raw} onChange={e=>setRaw(e.target.value)} />
       <div className="flex items-center gap-2">
-        <span className="text-sm">Tier</span>
-        <select className="border rounded px-2 py-1" value={tier} onChange={e=>setTier(e.target.value)}>
-          {TIERS.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-      </div>
-
-      <textarea className="w-full border rounded p-3" rows="10" placeholder="e.g.&#10;1.5-mile ≤ 13:15&#10;100 pushups&#10;50 burpees" value={raw} onChange={e=>setRaw(e.target.value)} />
-
-      <div className="flex items-center gap-2">
-        <button onClick={saveTemplate} className="px-3 py-2 rounded bg-slate-900 text-white">Save Tier Template</button>
-        <button onClick={applyToMember} className="px-3 py-2 rounded border">Apply to a specific member…</button>
+        <button onClick={saveMaster} className="px-3 py-2 rounded bg-slate-900 text-white">Save master</button>
+        <button onClick={assignToAll} className="px-3 py-2 rounded border">Assign to all members</button>
       </div>
       {msg && <p className="text-sm text-slate-600">{msg}</p>}
-
-      <p className="text-xs text-slate-500">Templates live at <code>config/standards_by_tier</code>. Member checklists live at <code>standards/{'{uid}'}</code>.</p>
+      <p className="text-xs text-slate-500">Master list: <code>config/standards_master</code> • Member copies: <code>standards/{'{uid}'}</code></p>
     </section>
   )
 }
