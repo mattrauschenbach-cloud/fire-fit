@@ -1,34 +1,12 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() { return request.auth != null; }
-    function isOwner(userId) { return signedIn() && request.auth.uid == userId; }
-    function isMentor() { return signedIn() && get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'mentor'; }
-
-    // Weekly / Monthly
-    match /meta/{docId} { allow read: if true; allow write: if isMentor(); }
-
-    // Profiles
-    match /profiles/{userId} {
-      allow read: if signedIn();
-      allow write: if isMentor() ||
-        (isOwner(userId) &&
-         request.resource.data.tier == resource.data.tier &&
-         request.resource.data.isCommitted == resource.data.isCommitted &&
-         request.resource.data.role == resource.data.role);
+    match /users/{userId}/** {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-
-    // Totals & logs
-    match /totals/{userId} { allow read: if true; allow write: if isOwner(userId); }
-    match /logs/{userId}/{doc=**} { allow read, write: if isOwner(userId); }
-
-    // Standards
-    match /standards/{userId} { allow read, write: if isOwner(userId) || isMentor(); }
-
-    // Config (tier templates)
-    match /config/{docId} { allow read: if true; allow write: if isMentor(); }
-
-    // Team stats
-    match /stats/{docId} { allow read: if true; allow write: if signedIn(); }
+    match /public/** {
+      allow read: if true;
+      allow write: if false;
+    }
   }
 }
